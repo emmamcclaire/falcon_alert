@@ -2,3 +2,4 @@
 per_imgs/
 *.png
 reference_notebooks/
+.ipynb_checkpoints/
