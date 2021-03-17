@@ -12,18 +12,20 @@ from scipy import stats
 import datetime
 import csv
 from shutil import copyfile
+import pytz 
+GMT = pytz.timezone('GMT')
 
 def get_screenshots():
-    global video_box
-    video_box.screenshot('live_images/image1.png')
+    global video_box_2
+    video_box_2.screenshot('live_images/image1.png')
     time.sleep(1)
-    video_box.screenshot('live_images/image2.png')
+    video_box_2.screenshot('live_images/image2.png')
     time.sleep(1)
-    video_box.screenshot('live_images/image3.png')
+    video_box_2.screenshot('live_images/image3.png')
 
 def is_there_a_bird():
     
-    snapshot_time = datetime.datetime.now()
+    snapshot_time = datetime.datetime.now(GMT)
     get_screenshots()
     
     predictions = []
@@ -36,7 +38,11 @@ def is_there_a_bird():
         predictions.append(prediction)
         if prediction == 0:
             copyfile('live_images/image' + i + '.png',
-                     'saved_positives/' + 
+                     'per_imgs/saved_positives/' + 
+                      str(snapshot_time).replace(' ', '').replace(':', '-').replace('.', '') + '-' + i + '.png')
+        elif prediction == 1:
+            copyfile('live_images/image' + i + '.png',
+                     'per_imgs/saved_negatives/' + 
                       str(snapshot_time).replace(' ', '').replace(':', '-').replace('.', '') + '-' + i + '.png')
 
     if stats.mode(predictions)[0][0] == 0:
@@ -49,12 +55,21 @@ def is_there_a_bird():
         status_writer = csv.writer(csvfile, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
         status_writer.writerow([status, snapshot_time])
-        
-model = load_model('models/model_1.h5')
 
+# load model
+
+model = load_model('models/model_3.h5')
+
+# open falcon cam website
 PATH = '/Applications/chromedriver'
 
-driver = webdriver.Chrome(PATH)
+# headless
+from selenium.webdriver.chrome.options import Options
+options = Options()
+options.headless = True
+options.add_argument("--window-size=1920x1080")
+driver = webdriver.Chrome(PATH, options=options)
+
 driver.get('https://www.nottinghamshirewildlife.org/peregrine-cam')
 
 elements = driver.find_elements(By.TAG_NAME, 'button')
@@ -72,9 +87,9 @@ for i, j in enumerate(video_buttons):
 # locate video element for screenshotting
 video_boxes = driver.find_elements(By.TAG_NAME, 'video')
 
-for i, j in enumerate(video_boxes):
-    if i == 1:
-        video_box = j
+video_box_1, video_box_2 = video_boxes
+        
+driver.execute_script("arguments[0].scrollIntoView();", video_box_1)
         
 schedule.clear()
 
