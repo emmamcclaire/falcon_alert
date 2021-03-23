@@ -13,6 +13,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 import numpy as np
 import schedule
+import psycopg2
 
 previous_status = 'start'
 
@@ -29,9 +30,28 @@ def get_screenshots():
     img_c = img.crop((int(left), int(top), int(right), int(bottom)))
     img_c.save('screenshot_c.png')
 
+def write_to_psql(data):
+    conn = psycopg2.connect(
+            database='postgres', user = 'postgres', password = 'nottperegrine',
+            host = '127.0.0.1', port = '5432'
+            )
+
+    conn.autocommit = True
+
+    cursor = conn.cursor()
+
+    SQL = '''INSERT INTO sightings (observation, time_gmt, model_version)
+            VALUES (%s, %s, %s);
+            '''
+    cursor.execute(SQL, data)
+    
+    conn.commit()
+    conn.close()
+    return print('wrote to DB')
+
 def is_there_a_bird():
     print('checking the nest...')
-    snapshot_time = datetime.datetime.now(GMT)
+    snapshot_time = f'{datetime.datetime.now(GMT):%Y-%m-%d %H:%M:%S}'
     get_screenshots()
 
     screenshot = image.load_img('screenshot_c.png', target_size = (224, 224))
@@ -47,12 +67,16 @@ def is_there_a_bird():
 
     elif prediction == 1:
         status = 'bird'
+    
+    data = (status, snapshot_time, model_ver)
+    write_to_psql(data)
 
+    print(snapshot_time)
     print(status)
 
-model = load_model('models/t_model_1_4.h5', custom_objects={'KerasLayer':hub.KerasLayer})
+model_ver = 't_model_1_4'
+model = load_model('models/'+model_ver+'.h5', custom_objects={'KerasLayer':hub.KerasLayer})
 
-print('selenium imported')
 # The place we will direct our WebDriver to
 url = 'https://www.nottinghamshirewildlife.org/peregrine-cam'
 
@@ -66,7 +90,6 @@ driver = webdriver.Chrome(options = options)
 # Directing the driver to the defined url
 driver.get(url)
 
-print('got url')
 try:
     eu_compliance = driver.find_element(By.ID,
                                      'popup-buttons')
@@ -79,8 +102,6 @@ try:
 
     driver.execute_script("arguments[0].scrollIntoView();", video_box_1)
 
-    print('scrolled')
-
     time.sleep(5)
 
     play_buttons = driver.find_elements(By.CLASS_NAME,
@@ -89,6 +110,8 @@ try:
     play_buttons[1].click()
     
     time.sleep(5)
+
+    print('page loaded')
 
     schedule.every(1).minutes.do(is_there_a_bird)
 
