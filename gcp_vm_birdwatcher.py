@@ -17,7 +17,7 @@ import psycopg2
 
 previous_status = 'start'
 
-def get_screenshots():
+def get_screenshot(num:str):
    
     img = driver.get_screenshot_as_png()
 
@@ -28,7 +28,7 @@ def get_screenshots():
     right = 1395
     bottom = 1060
     img_c = img.crop((int(left), int(top), int(right), int(bottom)))
-    img_c.save('screenshot_c.png')
+    img_c.save('screenshot_'+num+'.png')
 
 def write_to_psql(data):
     conn = psycopg2.connect(
@@ -47,34 +47,43 @@ def write_to_psql(data):
     
     conn.commit()
     conn.close()
-    return print('wrote to DB')
 
 def is_there_a_bird():
     print('checking the nest...')
     snapshot_time = f'{datetime.datetime.now(GMT):%Y-%m-%d %H:%M:%S}'
-    get_screenshots()
+    get_screenshot('1')
+    time.sleep(30)
+    get_screenshot('2')
+    time.sleep(30)
+    get_screenshot('3')
+    
+    predictions = []
 
-    screenshot = image.load_img('screenshot_c.png', target_size = (224, 224))
-    screenshot_array = image.img_to_array(screenshot)
-    prep_img = tf.keras.applications.mobilenet_v2.preprocess_input(screenshot_array)
-    prediction = np.argmax(model.predict(prep_img[np.newaxis, ...]))
+    for i in ['1', '2', '3']:
+
+        screenshot = image.load_img('screenshot_'+i+'.png', target_size = (224, 224))
+        screenshot_array = image.img_to_array(screenshot)
+        prep_img = tf.keras.applications.mobilenet_v2.preprocess_input(screenshot_array)
+        prediction = np.argmax(model.predict(prep_img[np.newaxis, ...]))
+        predictions.append(prediction)
+
+    print(predictions)
 
     global status
     global previous_status
     
-    if prediction == 0:
+    if 1 not in predictions:
         status = 'no bird'
 
-    elif prediction == 1:
+    elif 1 in predictions:
         status = 'bird'
     
     data = (status, snapshot_time, model_ver)
     write_to_psql(data)
 
-    print(snapshot_time)
-    print(status)
+    return print(snapshot_time + ' | ' + status)
 
-model_ver = 't_model_1_4'
+model_ver = 'model_1_6'
 model = load_model('models/'+model_ver+'.h5', custom_objects={'KerasLayer':hub.KerasLayer})
 
 # The place we will direct our WebDriver to
