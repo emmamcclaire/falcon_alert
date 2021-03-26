@@ -25,7 +25,7 @@ The full modeling notebook can be viewed [here](https://github.com/emmamcclaire/
 **The Virtual Machine**
 
 I set up a small virtual machine on Google Cloud Platform to run continuous monitoring of the nest. The machine has 2 vCPUs and 2 GB memory with a Debian 10 boot disk. 
-On it, I am running a [script](https://github.com/emmamcclaire/falcon_alert/blob/main/gcp_vm_birdwatcher.py) that performs the following every minute:
+On it, I am running a [script](https://github.com/emmamcclaire/falcon_alert/blob/main/virtual%20machine%20files/gcp_vm_birdwatcher.py) that performs the following every minute:
 - Uses Selenium to enter the website that hosts the live stream and scrape a screenshot of the nest
 - Passes the screenshot to the deep learning model and stores the predicted class
 - The predicted class and timestamp are written to a PostgreSQL database, which has been configured for remote access so that the data can be accessed outside the virtual machine
